@@ -127,7 +127,7 @@ class WPCA(BaseEstimator, TransformerMixin):
         self.explained_variance_ = evals[::-1]
         self.explained_variance_ratio_ = evals[::-1] / covar.trace()
 
-    def transform(self, X, weights=None):
+    def transform(self, X, weights=None, fit_mean=False):
         """Apply dimensionality reduction on X.
 
         X is projected on the first principal components previous extracted
@@ -147,7 +147,7 @@ class WPCA(BaseEstimator, TransformerMixin):
         -------
         X_new : array-like, shape (n_samples, n_components)
         """
-        X, weights = self._center_and_weight(X, weights, fit_mean=False)
+        X, weights = self._center_and_weight(X, weights, fit_mean=fit_mean)
         return self._transform_precentered(X, weights)
 
     def _transform_precentered(self, X, weights):
@@ -243,3 +243,41 @@ class WPCA(BaseEstimator, TransformerMixin):
             Reconstructed version of X
         """
         return self.inverse_transform(self.fit_transform(X, weights=weights))
+
+
+class WPCA2(WPCA):
+    """A copy of the default WPCA class which allows for the principal
+    components to be specified a-priori instead of having to be recalculated
+    for each dataset. This allows for, e.g., the reconstruction of a dataset
+    based on the PCs extracted from a second dataset.
+    """
+
+    def __init__(self, components, n_components=None, xi=0,
+                 regularization=None, copy_data=True):
+        self.n_components = n_components
+        self.xi = xi
+        self.regularization = regularization
+        self.copy_data = copy_data
+        self.components_ = components
+
+    def reconstruct(self, X, weights=None):
+        """Reconstruct the data using the PCA model
+
+        This is equivalent to calling transform followed by inverse_transform.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_components)
+            Data in transformed representation.
+
+        weights: array-like, shape (n_samples, n_features)
+            Non-negative weights encoding the reliability of each measurement.
+            Equivalent to the inverse of the Gaussian errorbar.
+
+        Returns
+        -------
+        X_reconstructed : ndarray, shape (n_samples, n_components)
+            Reconstructed version of X
+        """
+        return self.inverse_transform(self.transform(X, weights=weights,
+                                                     fit_mean=True))
